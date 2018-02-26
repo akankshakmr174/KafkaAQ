@@ -10,7 +10,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/kafka_2.11-0.11.0.0.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/kafka_2.11-0.11.0.0-test.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -19,7 +19,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/kafka-clients-0.11.0.0.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/kafka-clients-0.11.0.0.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -28,7 +28,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/log4j-1.2.17.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/zookeeper-3.4.10.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -37,7 +37,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/lz4-1.3.0.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/zkclient-0.10.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -46,7 +46,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/slf4j-api-1.7.25.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/slf4j-api-1.7.25.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -55,7 +55,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/scala-library-2.11.11.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/kafka_2.11-0.11.0.0.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -64,7 +64,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/connect-api-0.11.0.0.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/scala-library-2.11.11.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -73,7 +73,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/kafka_2.11-0.11.0.0-test.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/connect-api-0.11.0.0.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -82,7 +82,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/zkclient-0.10.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/log4j-1.2.17.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -91,7 +91,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/zookeeper-3.4.10.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/jackson-jaxrs-json-provider-2.8.5.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -100,7 +100,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/jackson-jaxrs-json-provider-2.8.5.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/connect-json-0.11.0.0.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -109,7 +109,7 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/scala-parser-combinators_2.11-1.0.4.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/kafka_2.11-0.11.0.0/libs/scala-parser-combinators_2.11-1.0.4.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
@@ -118,11 +118,55 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/connect-json-0.11.0.0.jar!/" />
+          <root url="jar://$USER_HOME$/Downloads/KafkaChanges/aqapi.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
-        <jarDirectory url="jar://$USER_HOME$/Downloads/kafka-0.11.0.1-src/libs/connect-json-0.11.0.0.jar!/" recursive="false" />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/Downloads/KafkaChanges/jmscommon.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/Downloads/KafkaChanges/jta.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/Downloads/KafkaChanges/ojdbc8.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/Downloads/lz4-1.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$USER_HOME$/Downloads/lz4-java-1.4.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
       </library>
     </orderEntry>
   </component>

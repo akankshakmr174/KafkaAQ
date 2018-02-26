@@ -9,14 +9,13 @@ import org.I0Itec.zkclient.ZkConnection;
 
 
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.KafkaAQProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.TopicPartition;
 
 import java.util.*;
 
@@ -51,17 +50,23 @@ class KafkaTopic {
 }
 
 class Producer extends Thread {
-    private final KafkaProducer<Integer, String> producer;
+    private final KafkaAQProducer<Integer, String> producer;
     private final String topic;
     private final Boolean isAsync;
 
     public Producer(String topic, Boolean isAsync) {
         Properties props = new Properties();
         props.put("bootstrap.servers", "den01syu.us.oracle.com:9092");
+        props.put("oracle.host", "slc06cjr.us.oracle.com:1521");
+        props.put("oracle.sid", "jms1");
+        props.put("oracle.service", "jms1.regress.rdbms.dev.us.oracle.com");
+        props.put("oracle.user", "aq");
+        props.put("oracle.password", "aq");
         props.put("client.id", "DemoProducer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        producer = new KafkaProducer<>(props);
+        producer = new KafkaAQProducer<Integer, String>(props);
+        //producer = new KafkaAQProducer<Integer, String>(props);
         this.topic = topic;
         this.isAsync = isAsync;
         System.out.println("Kafka Producer initialized");
@@ -80,6 +85,7 @@ class Producer extends Thread {
             } else { // Send synchronously
                 System.out.println("Sending message");
                 try {
+
                     producer.send(new ProducerRecord<>(topic,
                             messageNo,
                             messageStr)).get();
@@ -150,7 +156,7 @@ class Consumer extends Thread{
     public void run() {
         boolean cflag=true;
         consumer.subscribe(Collections.singletonList(this.topic));
-//        consumer.assign(Collections.singletonList(new TopicPartition(KafkaProperties.TOPIC,0)));
+        //consumer.assign(Collections.singletonList(new TopicPartition(KafkaProperties.TOPIC,0)));
 
         try {
             while (cflag) {
@@ -194,13 +200,22 @@ public class KafkaConsumerProducerDemo {
     public static void main(String[] args) {
         //KafkaTopic kTopic=new KafkaTopic(1,1);
         //String ktopic=kTopic.returnTopicName();
-        boolean isAsync = args.length == 0 || !args[0].trim().equalsIgnoreCase("sync");
-        System.out.println(" "+isAsync);
-        Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
-        producerThread.start();
+        System.out.println("Starting Kafka Client");
+        boolean isAsync = false;
+        System.out.println("Starting Producer "+isAsync);
+        try {
+            Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
+            producerThread.start();
 
+            producerThread.join();
+        } catch(Exception e ) {
+            System.out.println("Exception from Main " +e);
+            e.printStackTrace();
+        }
+        System.out.println("Demo Ends");
+    /*    System.out.println("Starting Consumer");
         Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);
-        consumerThread.start();
+        consumerThread.start();*/
 
     }
 }

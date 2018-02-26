@@ -16,42 +16,31 @@
  */
 package org.apache.kafka.common.security.auth;
 
-import org.apache.kafka.common.security.JaasContext;
+import javax.security.sasl.SaslServer;
+import java.net.InetAddress;
 
-import java.util.Map;
+public class SaslAuthenticationContext implements AuthenticationContext {
+    private final SaslServer server;
+    private final SecurityProtocol securityProtocol;
+    private final InetAddress clientAddress;
 
-import javax.security.auth.Subject;
-import javax.security.auth.login.LoginContext;
-import javax.security.auth.login.LoginException;
+    public SaslAuthenticationContext(SaslServer server, SecurityProtocol securityProtocol, InetAddress clientAddress) {
+        this.server = server;
+        this.securityProtocol = securityProtocol;
+        this.clientAddress = clientAddress;
+    }
 
-/**
- * Login interface for authentication.
- */
-public interface Login {
+    public SaslServer server() {
+        return server;
+    }
 
-    /**
-     * Configures this login instance.
-     */
-    void configure(Map<String, ?> configs, JaasContext jaasContext);
+    @Override
+    public SecurityProtocol securityProtocol() {
+        return securityProtocol;
+    }
 
-    /**
-     * Performs login for each login module specified for the login context of this instance.
-     */
-    LoginContext login() throws LoginException;
-
-    /**
-     * Returns the authenticated subject of this login context.
-     */
-    Subject subject();
-
-    /**
-     * Returns the service name to be used for SASL.
-     */
-    String serviceName();
-
-    /**
-     * Closes this instance.
-     */
-    void close();
+    @Override
+    public InetAddress clientAddress() {
+        return clientAddress;
+    }
 }
-
