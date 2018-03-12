@@ -260,7 +260,7 @@ public class KafkaProducer<K, V> implements Producer<K, V> {
      * are documented <a href="http://kafka.apache.org/documentation.html#producerconfigs">here</a>. Values can be
      * either strings or Objects of the appropriate type (for example a numeric configuration would accept either the
      * string "42" or the integer 42).
-     * @param configs   The producer configs
+     * @paramconfigs   The producer configs
      *
      */
     

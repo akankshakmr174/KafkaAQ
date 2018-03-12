@@ -15,7 +15,7 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.KafkaAQConsumer;
 
 import java.util.*;
 
@@ -74,7 +74,7 @@ class Producer extends Thread {
 
     public void run() {
         int messageNo = 1;
-        while (messageNo < 5) {
+        while (messageNo < 10) {
             System.out.println("Message number " + messageNo);
             String messageStr = "Message_" + messageNo;
             long startTime = System.currentTimeMillis();
@@ -133,7 +133,7 @@ class DemoCallBack implements Callback {
     }
 }
 class Consumer extends Thread{
-    private final KafkaConsumer<Object, Object> consumer;
+    private final KafkaAQConsumer<Object, Object> consumer;
     private final String topic;
 
     public Consumer(String topic) {
@@ -141,13 +141,18 @@ class Consumer extends Thread{
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "den01syu.us.oracle.com:9092");
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "DemoConsumer");
+        props.put("oracle.host", "slc06cjr.us.oracle.com:1521");
+        props.put("oracle.sid", "jms1");
+        props.put("oracle.service", "jms1.regress.rdbms.dev.us.oracle.com");
+        props.put("oracle.user", "aq");
+        props.put("oracle.password", "aq");
         //props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         //props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
         //props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, "30000");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.IntegerDeserializer");
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
 
-        consumer = new KafkaConsumer<>(props);
+        consumer = new KafkaAQConsumer<>(props);
         this.topic = topic;
         System.out.println("Consumer Initialized");
     }
@@ -200,9 +205,11 @@ public class KafkaConsumerProducerDemo {
     public static void main(String[] args) {
         //KafkaTopic kTopic=new KafkaTopic(1,1);
         //String ktopic=kTopic.returnTopicName();
+
         System.out.println("Starting Kafka Client");
         boolean isAsync = false;
         System.out.println("Starting Producer "+isAsync);
+        long startTime=System.nanoTime();
         try {
             Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
             producerThread.start();
@@ -212,6 +219,9 @@ public class KafkaConsumerProducerDemo {
             System.out.println("Exception from Main " +e);
             e.printStackTrace();
         }
+        long endTime = System.nanoTime();
+        long totalTime =endTime-startTime;
+        System.out.println(totalTime);
         System.out.println("Demo Ends");
     /*    System.out.println("Starting Consumer");
         Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);

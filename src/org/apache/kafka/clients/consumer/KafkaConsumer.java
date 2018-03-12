@@ -815,14 +815,33 @@ public class KafkaConsumer<K, V> implements Consumer<K, V> {
         this.assignors = assignors;
     }
 
+
+    public KafkaConsumer() {
+        log=null;
+        clientId="DUMMY";
+        coordinator=null;
+        keyDeserializer=null;
+        valueDeserializer=null;
+        fetcher=null;
+        interceptors=null;
+        time=null;
+        metrics=null;
+        client =null;
+        subscriptions=null;
+        metadata=null;
+        retryBackoffMs=10000;
+        requestTimeoutMs=10000;
+        assignors=null;
+    }
     /**
-     * Get the set of partitions currently assigned to this consumer. If subscription happened by directly assigning
-     * partitions using {@link #assign(Collection)} then this will simply return the same partitions that
-     * were assigned. If topic subscription was used, then this will give the set of topic partitions currently assigned
-     * to the consumer (which may be none if the assignment hasn't happened yet, or the partitions are in the
-     * process of getting reassigned).
-     * @return The set of partitions currently assigned to this consumer
-     */
+         * Get the set of partitions currently assigned to this consumer. If subscription happened by directly assigning
+         * partitions using {@link #assign(Collection)} then this will simply return the same partitions that
+         * were assigned. If topic subscription was used, then this will give the set of topic partitions currently assigned
+         * to the consumer (which may be none if the assignment hasn't happened yet, or the partitions are in the
+         * process of getting reassigned).
+         * @return The set of partitions currently assigned to this consumer
+         */
+
     public Set<TopicPartition> assignment() {
         acquireAndEnsureOpen();
         try {
