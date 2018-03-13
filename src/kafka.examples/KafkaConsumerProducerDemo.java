@@ -176,7 +176,7 @@ class Consumer extends Thread{
             }
         }catch(Exception e)
         {
-            System.out.println("Excption in poll " + e);
+            System.out.println("Exception in poll " + e);
             e.printStackTrace();
         }
         finally {
@@ -215,7 +215,7 @@ public class KafkaConsumerProducerDemo {
         boolean isAsync = false;
         System.out.println("Starting Producer "+isAsync);
         long startTime=System.nanoTime();
-     /*  try {
+     try {
             Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
             producerThread.start();
 
@@ -226,7 +226,7 @@ public class KafkaConsumerProducerDemo {
         }
         long endTime = System.nanoTime();
         long totalTime =endTime-startTime;
-        System.out.println(totalTime); */
+        System.out.println(totalTime);
         System.out.println("Starting Consumer");
         try{
             Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);

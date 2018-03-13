@@ -123,6 +123,7 @@ public class KafkaAQConsumer<K,V> extends KafkaConsumer<K,V> {
     @Override
     public ConsumerRecords<K, V> poll(long timeout) {
         ConsumerRecords<K, V> dummyCon= null;
+        ConsumerRecord<K,V> record=null;
        try {
            if(!isStarted)
            {
@@ -130,15 +131,15 @@ public class KafkaAQConsumer<K,V> extends KafkaConsumer<K,V> {
                isStarted = true;
            }
 
-           int i=0;
            do {
-               msg = (TextMessage)tSubs.receive(timeout);
-                if(msg!=null)
-                  System.out.println(msg.toString());
-                else
-                    System.out.println("Null Message ");
-               i++;
-           } while(i<numMsgs);
+                String key;
+                String val;
+                msg = (TextMessage)tSubs.receive(timeout);
+                key=msg.getJMSCorrelationID();
+                val=msg.getText();
+                System.out.println(key+" "+val);
+
+           } while(msg!=null);
        }
        catch(Exception e){
            System.out.println("Cannot get messages!"+e);
