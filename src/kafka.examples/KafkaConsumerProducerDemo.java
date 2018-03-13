@@ -174,7 +174,12 @@ class Consumer extends Thread{
 
                 }
             }
-        } finally {
+        }catch(Exception e)
+        {
+            System.out.println("Excption in poll " + e);
+            e.printStackTrace();
+        }
+        finally {
             consumer.close();
         }
     }
@@ -210,22 +215,31 @@ public class KafkaConsumerProducerDemo {
         boolean isAsync = false;
         System.out.println("Starting Producer "+isAsync);
         long startTime=System.nanoTime();
-        try {
+     /*  try {
             Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
             producerThread.start();
 
             producerThread.join();
         } catch(Exception e ) {
-            System.out.println("Exception from Main " +e);
+            System.out.println("Exception from Producer Main " +e);
             e.printStackTrace();
         }
         long endTime = System.nanoTime();
         long totalTime =endTime-startTime;
-        System.out.println(totalTime);
+        System.out.println(totalTime); */
+        System.out.println("Starting Consumer");
+        try{
+            Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);
+            consumerThread.start();
+            consumerThread.join();
+
+        } catch (Exception e){
+            System.out.println("Exception from Comsumer Main" +e);
+            e.printStackTrace();
+        }
+
+
         System.out.println("Demo Ends");
-    /*    System.out.println("Starting Consumer");
-        Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);
-        consumerThread.start();*/
 
     }
 }

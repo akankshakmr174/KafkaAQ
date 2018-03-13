@@ -51,9 +51,8 @@ public class KafkaAQConsumer<K,V> extends KafkaConsumer<K,V> {
     String user;
     boolean isStarted = false;
     java.sql.Connection dbConn=null;
-    String policyType=System.getProperty("wildcard", ".*");
     TextMessage msg = null;
-
+    int numMsgs=10;
     public KafkaAQConsumer(Properties props)
     {
         super();
@@ -104,8 +103,10 @@ public class KafkaAQConsumer<K,V> extends KafkaConsumer<K,V> {
         while(topicIterate.hasNext()){
             try
             {
-                Topic t=tSess.createTopic(topicIterate.next());
-                tSubs=((AQjmsSession)tSess).createSubscriber(t);
+                String topicNow = topicIterate.next();
+                System.out.println("Topic Now = "+ topicNow);
+               topic= ((AQjmsSession)tSess).getTopic(user, topicNow);
+                tSubs=((AQjmsSession)tSess).createDurableSubscriber(topic,"S1");
             }
             catch(Exception e){
                 System.out.println("Exception while creation subscription!" +e);
@@ -121,15 +122,28 @@ public class KafkaAQConsumer<K,V> extends KafkaConsumer<K,V> {
 
     @Override
     public ConsumerRecords<K, V> poll(long timeout) {
-        ConsumerRecords<K, V> dummyCon=null;
+        ConsumerRecords<K, V> dummyCon= null;
        try {
+           if(!isStarted)
+           {
+               tCon.start();
+               isStarted = true;
+           }
 
-           msg = (TextMessage) (tSubs.receive(timeout));
+           int i=0;
+           do {
+               msg = (TextMessage)tSubs.receive(timeout);
+                if(msg!=null)
+                  System.out.println(msg.toString());
+                else
+                    System.out.println("Null Message ");
+               i++;
+           } while(i<numMsgs);
        }
        catch(Exception e){
-           System.out.println("Cannot get messages!");
+           System.out.println("Cannot get messages!"+e);
        }
-       dummyCon=(ConsumerRecords<K,V>)msg;
+
         return dummyCon;
     }
 
