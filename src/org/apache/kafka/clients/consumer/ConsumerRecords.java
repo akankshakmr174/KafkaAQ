@@ -41,7 +41,9 @@ public class ConsumerRecords<K, V> implements Iterable<ConsumerRecord<K, V>> {
     public ConsumerRecords(Map<TopicPartition, List<ConsumerRecord<K, V>>> records) {
         this.records = records;
     }
-
+    public ConsumerRecords(){
+        records=null;
+    }
     /**
      * Get just the records for the given partition
      * 

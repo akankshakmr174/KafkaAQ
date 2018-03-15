@@ -134,7 +134,20 @@ public class ConsumerRecord<K, V> {
         this.value = value;
         this.headers = headers;
     }
+    public ConsumerRecord(){
+        topic =null;
+        partition=0;
+        offset=0;
+        timestamp=0;
+        timestampType=null;
+        checksum=null;
+        serializedKeySize=0;
+        serializedValueSize=0;
+        key = null;
+        value = null;
+        headers=null;
 
+    }
     /**
      * The topic this record is received from
      */

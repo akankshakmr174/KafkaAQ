@@ -13,7 +13,7 @@ import org.apache.kafka.clients.producer.KafkaAQProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerAQRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaAQConsumer;
 
@@ -166,10 +166,10 @@ class Consumer extends Thread{
         try {
             while (cflag) {
                 System.out.println("I am here");
-                ConsumerRecords<Object, Object> records = consumer.poll(1000);
-                for (ConsumerRecord<Object, Object> record : records)
+                ConsumerAQRecord<Object, Object> records = consumer.poll(1000);
+                for (ConsumerAQRecord<Object, Object> record : records)
                 {
-                    System.out.println("topic = "+record.topic()+"partition = "+record.partition()+"offset = "+record.offset()+"message= "+record.key());
+                    System.out.println("message= "+record.key()+"text"+record.value());
                     cflag=false;
 
                 }
