@@ -135,15 +135,15 @@ import javax.jms.*;
                     msg = (TextMessage) tSubs.receive(timeout);
                     key = msg.getJMSCorrelationID();
                     val = msg.getText();
-                    System.out.println(key + " " + val);
-                    dummyCon.retVal();
-                    System.out.println(dummyCon);
+                    System.out.println("message="+key + "text=" + val);
+                    //dummyCon.retVal();
+                    //System.out.println(dummyCon);
                 } while (msg != null);
             } catch (Exception e) {
                 System.out.println("Cannot get messages!" + e);
             }
 
-            return dummyCon;
+            return null;
         }
 
 

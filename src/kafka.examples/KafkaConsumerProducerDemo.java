@@ -8,14 +8,11 @@ import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.ZkConnection;
 
 
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaAQProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerAQRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaAQConsumer;
 
 import java.util.*;
 
@@ -166,8 +163,8 @@ class Consumer extends Thread{
         try {
             while (cflag) {
                 System.out.println("I am here");
-                ConsumerAQRecord<Object, Object> records = consumer.poll(1000);
-                for (ConsumerAQRecord<Object, Object> record : records)
+                ConsumerRecords<Object, Object> records = consumer.poll(1000);
+                for (ConsumerRecord<Object, Object> record : records)
                 {
                     System.out.println("message= "+record.key()+"text"+record.value());
                     cflag=false;
