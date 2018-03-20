@@ -71,7 +71,7 @@ class Producer extends Thread {
 
     public void run() {
         int messageNo = 1;
-        while (messageNo < 10) {
+        while (messageNo < 10001) {
             System.out.println("Message number " + messageNo);
             String messageStr = "Message_" + messageNo;
             long startTime = System.currentTimeMillis();
@@ -211,7 +211,7 @@ public class KafkaConsumerProducerDemo {
         System.out.println("Starting Kafka Client");
         boolean isAsync = false;
         System.out.println("Starting Producer "+isAsync);
-        long startTime=System.nanoTime();
+
      try {
             Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
             producerThread.start();
@@ -221,10 +221,9 @@ public class KafkaConsumerProducerDemo {
             System.out.println("Exception from Producer Main " +e);
             e.printStackTrace();
         }
-        long endTime = System.nanoTime();
-        long totalTime =endTime-startTime;
-        System.out.println(totalTime);
+
         System.out.println("Starting Consumer");
+        long startTime=System.nanoTime();
         try{
             Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);
             consumerThread.start();
@@ -234,9 +233,18 @@ public class KafkaConsumerProducerDemo {
             System.out.println("Exception from Comsumer Main" +e);
             e.printStackTrace();
         }
-
+        long endTime = System.nanoTime();
+        long totalTime =endTime-startTime;
+        System.out.println(totalTime);
 
         System.out.println("Demo Ends");
 
     }
 }
+
+/*Performance
+Enqueue(KafkaAQ;10K messages): 79.91443708223333 minutes
+Enqueue(Kafka;10K messages): 0.00776537318333 minutes
+Dequeue(Kafka;10K messages):0.219689306666 minutes
+Dequeue(KafkaAQ;10K messages):39.93 minutes
+ */
