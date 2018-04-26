@@ -10,7 +10,7 @@ import org.I0Itec.zkclient.ZkConnection;
 
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.Callback;
-import org.apache.kafka.clients.producer.KafkaAQProducer;
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 
@@ -47,23 +47,23 @@ class KafkaTopic {
 }
 
 class Producer extends Thread {
-    private final KafkaAQProducer<Integer, String> producer;
+    private final KafkaProducer<Integer, String> producer;
     private final String topic;
     private final Boolean isAsync;
 
     public Producer(String topic, Boolean isAsync) {
         Properties props = new Properties();
         props.put("bootstrap.servers", "den01syu.us.oracle.com:9092");
-        props.put("oracle.host", "slc06cjr.us.oracle.com:1521");
-        props.put("oracle.sid", "jms1");
-        props.put("oracle.service", "jms1.regress.rdbms.dev.us.oracle.com");
+        props.put("oracle.host", "den01chp.us.oracle.com:1521");
+        props.put("oracle.sid", "mydb");
+        props.put("oracle.service", "mydb.regress.rdbms.dev.us.oracle.com");
         props.put("oracle.user", "aq");
         props.put("oracle.password", "aq");
         props.put("client.id", "DemoProducer");
         props.put("key.serializer", "org.apache.kafka.common.serialization.IntegerSerializer");
         props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        producer = new KafkaAQProducer<Integer, String>(props);
-        //producer = new KafkaAQProducer<Integer, String>(props);
+        producer = new KafkaProducer<Integer, String>(props);
+        //producer = new KafkaProducer<Integer, String>(props);
         this.topic = topic;
         this.isAsync = isAsync;
         System.out.println("Kafka Producer initialized");
@@ -71,23 +71,38 @@ class Producer extends Thread {
 
     public void run() {
         int messageNo = 1;
-        while (messageNo < 10001) {
-            System.out.println("Message number " + messageNo);
-            String messageStr = "Message_" + messageNo;
+        System.out.println("Msage number " + messageNo);
+        String messageStr = "Message_" + messageNo;
+        try {
+            producer.send(new ProducerRecord<>(topic,
+                    messageNo,
+                    messageStr)).get();
+        } catch(Exception e)
+        {
+            System.out.println("Exception in first enqueue " + e);
+            e.printStackTrace();
+        }
+        messageNo++;
+        while (messageNo < 10002) {
+            //System.out.println("Message number " + messageNo);
+            messageStr = "Message_" + messageNo;
             long startTime = System.currentTimeMillis();
             if (isAsync) { // Send asynchronously
                 producer.send(new ProducerRecord<>(topic,
                         messageNo,
                         messageStr), new DemoCallBack(startTime, messageNo, messageStr));
             } else { // Send synchronously
-                System.out.println("Sending message");
+            //    System.out.println("Sending message");
                 try {
-
+                    //System.out.println("Message number " + messageNo);
+                    messageStr = "Message_" + messageNo;
                     producer.send(new ProducerRecord<>(topic,
                             messageNo,
                             messageStr)).get();
-                    System.out.println("Sent message: (" + messageNo + ", " + messageStr + ")");
+                    if(messageNo % 1000 == 0)
+                     System.out.println("Sent message: (" + messageNo + ", " + messageStr + ")");
                 } catch (Exception e) {
+                    System.out.println("Exception while sending message " + messageNo + " : " + e);
                     e.printStackTrace();
                 }
             }
@@ -130,7 +145,7 @@ class DemoCallBack implements Callback {
     }
 }
 class Consumer extends Thread{
-    private final KafkaAQConsumer<Object, Object> consumer;
+    private final KafkaConsumer<Object, Object> consumer;
     private final String topic;
 
     public Consumer(String topic) {
@@ -138,9 +153,9 @@ class Consumer extends Thread{
         Properties props = new Properties();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "den01syu.us.oracle.com:9092");
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "DemoConsumer");
-        props.put("oracle.host", "slc06cjr.us.oracle.com:1521");
-        props.put("oracle.sid", "jms1");
-        props.put("oracle.service", "jms1.regress.rdbms.dev.us.oracle.com");
+        props.put("oracle.host", "den01chp.us.oracle.com:1521");
+        props.put("oracle.sid", "mydb");
+        props.put("oracle.service", "mydb.regress.rdbms.dev.us.oracle.com");
         props.put("oracle.user", "aq");
         props.put("oracle.password", "aq");
         //props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
@@ -149,7 +164,7 @@ class Consumer extends Thread{
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.IntegerDeserializer");
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
 
-        consumer = new KafkaAQConsumer<>(props);
+        consumer = new KafkaConsumer<>(props);
         this.topic = topic;
         System.out.println("Consumer Initialized");
     }
@@ -163,7 +178,7 @@ class Consumer extends Thread{
         try {
             while (cflag) {
                 System.out.println("I am here");
-                ConsumerRecords<Object, Object> records = consumer.poll(1000);
+                ConsumerRecords<Object, Object> records = consumer.poll(10000);
                 for (ConsumerRecord<Object, Object> record : records)
                 {
                     System.out.println("message= "+record.key()+"text"+record.value());
@@ -173,8 +188,8 @@ class Consumer extends Thread{
             }
         }catch(Exception e)
         {
-            System.out.println("Exception in poll " + e);
-            e.printStackTrace();
+            System.out.println("Queue out of messages" +e);
+            //e.printStackTrace();
         }
         finally {
             consumer.close();
@@ -211,7 +226,7 @@ public class KafkaConsumerProducerDemo {
         System.out.println("Starting Kafka Client");
         boolean isAsync = false;
         System.out.println("Starting Producer "+isAsync);
-
+        long startTime=System.currentTimeMillis();
      try {
             Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
             producerThread.start();
@@ -219,23 +234,26 @@ public class KafkaConsumerProducerDemo {
             producerThread.join();
         } catch(Exception e ) {
             System.out.println("Exception from Producer Main " +e);
-            e.printStackTrace();
+            //e.printStackTrace();
         }
+        long endTime = System.currentTimeMillis();
+        long totalTime =endTime-startTime;
+  System.out.println(" Producer Total Time =  " +totalTime/1000 +  " secs ");
+      System.out.println("Starting Consumer");
 
-        System.out.println("Starting Consumer");
-        long startTime=System.nanoTime();
         try{
             Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);
+            startTime=System.currentTimeMillis();
             consumerThread.start();
             consumerThread.join();
-
+            endTime=System.currentTimeMillis();
+            totalTime=endTime-startTime;
+            System.out.println(" Consumer Total Time =  " +totalTime/1000 +  " secs ");
         } catch (Exception e){
             System.out.println("Exception from Comsumer Main" +e);
             e.printStackTrace();
         }
-        long endTime = System.nanoTime();
-        long totalTime =endTime-startTime;
-        System.out.println(totalTime);
+
 
         System.out.println("Demo Ends");
 
