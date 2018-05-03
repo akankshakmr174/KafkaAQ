@@ -1,0 +1,9 @@
+begin
+dbms_aqadm.create_sharded_queue(queue_name => 'TOPIC1', multiple_consumers=>TRUE);
+end;
+
+st1 = "begin bms_aqadm.create_sharded_queue(queue_name => ''" + qName + "', multiple_consumers=>TRUE); end;";
+
+begin
+dbms_aqadm.set_queue_parameter('"+qname+"', 'STICKY_DEQUEUE', 1);
+end;

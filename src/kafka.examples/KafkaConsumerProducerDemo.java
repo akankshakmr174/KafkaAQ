@@ -1,5 +1,6 @@
 package kafka.examples;
 
+import kafka.admin.AdminClient;
 import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
 import kafka.utils.ZKStringSerializer$;
@@ -9,6 +10,7 @@ import org.I0Itec.zkclient.ZkConnection;
 
 
 import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -17,32 +19,27 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import java.util.*;
 
 class KafkaTopic {
-    ZkClient zkClient = null;
-    ZkUtils zkUtils = null;
-    String topicName=null;
-    public KafkaTopic(int partition, int replication){
-        String zookeeperHosts = "den01syu.us.oracle.com:2181"; // If multiple zookeeper then -> String zookeeperHosts = "192.168.20.1:2181,192.168.20.2:2181";
-        int sessionTimeOutInMs = 15 * 1000; // 15 secs
-        int connectionTimeOutInMs = 10 * 1000; // 10 secs
+    KafkaAdminClient topicClient;
+    NewTopic t1=null;
+    public KafkaTopic(int partition, short replication){
 
-        zkClient = new ZkClient(zookeeperHosts, sessionTimeOutInMs, connectionTimeOutInMs, ZKStringSerializer$.MODULE$);
-        zkUtils = new ZkUtils(zkClient, new ZkConnection(zookeeperHosts), false);
-
-        topicName = "testTopic2";
+        Scanner s=new Scanner(System.in);
+        System.out.println("Enter the name of the topic to be created");
+        t1=new NewTopic(s.next(), partition,replication);
         Properties topicConfiguration = new Properties();
+        topicConfiguration.put("oracle.host", "den01chp.us.oracle.com:1521");
+        topicConfiguration.put("oracle.sid", "mydb");
+        topicConfiguration.put("oracle.service", "mydb.regress.rdbms.dev.us.oracle.com");
+        topicConfiguration.put("oracle.user", "aq");
+        topicConfiguration.put("oracle.password", "aq");
+        topicClient=new KafkaAdminClient(topicConfiguration);
+        topicClient.createTopics(t1);
 
-        AdminUtils.createTopic(zkUtils, topicName, partition, replication, topicConfiguration, RackAwareMode.Enforced$.MODULE$);
-        //Map<ConfigResource,Config> alterMap=new HashMap<ConfigResource,Config>();
-        //AdminClient.alterConfigs(alterMap.put(ConfigResource(BROKER,resName),ConfigEntry(ConfigName, value) )); //introduce any config in the ConfigName variable with the value
-
-        //Map<String,NewPartitions> map=new HashMap<String,NewPartitions>(); NewPartitions class only in Kafka 1.0
-        //AdminClient.createPartitions(map.put(topicName,NewPartitions(6)); //will only work with Kafka 1.0
-        //zkClient.close();
     }
 
 
     public String returnTopicName(){
-        return topicName;
+        return t1.name() ;
     }
 }
 
@@ -220,15 +217,24 @@ class KafkaProperties {
  */
 public class KafkaConsumerProducerDemo {
     public static void main(String[] args) {
-        //KafkaTopic kTopic=new KafkaTopic(1,1);
-        //String ktopic=kTopic.returnTopicName();
-
+        String ktopic;
+        Scanner s1=new Scanner(System.in);
+        System.out.println("Do you have a topic in mind?0/1");
+        if(s1.nextInt()==1){
+            System.out.println("Please enter that topicname");
+            ktopic=s1.next();
+        }
+        else {
+            KafkaTopic kTopic = new KafkaTopic(1, (short) 0);
+            ktopic = kTopic.returnTopicName();
+            System.out.println(ktopic);
+        }
         System.out.println("Starting Kafka Client");
         boolean isAsync = false;
         System.out.println("Starting Producer "+isAsync);
         long startTime=System.currentTimeMillis();
      try {
-            Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
+            Producer producerThread = new Producer(ktopic, isAsync);
             producerThread.start();
 
             producerThread.join();
@@ -242,7 +248,7 @@ public class KafkaConsumerProducerDemo {
       System.out.println("Starting Consumer");
 
         try{
-            Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);
+            Consumer consumerThread = new Consumer(ktopic);
             startTime=System.currentTimeMillis();
             consumerThread.start();
             consumerThread.join();

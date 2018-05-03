@@ -17,7 +17,12 @@
 
 package org.apache.kafka.clients.admin;
 
-import java.util.Set;
+import java.sql.*;
+import java.sql.Connection;
+import java.util.*;
+
+import oracle.jms.AQjmsFactory;
+import oracle.jms.AQjmsTopicConnectionFactory;
 import org.apache.kafka.clients.ApiVersions;
 import org.apache.kafka.clients.ClientRequest;
 import org.apache.kafka.clients.ClientResponse;
@@ -96,18 +101,9 @@ import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 
+import javax.jms.*;
+import javax.jms.IllegalStateException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -122,7 +118,14 @@ import static org.apache.kafka.common.utils.Utils.closeQuietly;
  */
 @InterfaceStability.Evolving
 public class KafkaAdminClient extends AdminClient {
-
+    TopicConnectionFactory tcf;
+    TopicConnection tCon;
+    TopicSession tSess;
+    Topic topic;
+    String oracleUrl;
+    String user;
+    String pass;
+    boolean isStarted = false;;
     /**
      * The next integer to use to name a KafkaAdminClient which the user hasn't specified an explicit name for.
      */
@@ -355,7 +358,7 @@ public class KafkaAdminClient extends AdminClient {
         return new LogContext("[AdminClient clientId=" + clientId + "] ");
     }
 
-    private KafkaAdminClient(AdminClientConfig config, String clientId, Time time, Metadata metadata,
+    public KafkaAdminClient(AdminClientConfig config, String clientId, Time time, Metadata metadata,
                      Metrics metrics, KafkaClient client, TimeoutProcessorFactory timeoutProcessorFactory,
                      LogContext logContext) {
         this.defaultTimeoutMs = config.getInt(AdminClientConfig.REQUEST_TIMEOUT_MS_CONFIG);
@@ -380,6 +383,48 @@ public class KafkaAdminClient extends AdminClient {
         thread.start();
     }
 
+
+public KafkaAdminClient(Properties props){
+        this.defaultTimeoutMs=0;
+        this.clientId=null;
+        this.log=null;
+        this.time=null;
+        this.metadata=null;
+        this.metrics=null;
+        this.client=null;
+    this.runnable = new AdminClientRunnable();
+    String threadName = "kafka-admin-client-thread | " + clientId;
+    this.thread = new KafkaThread(threadName, runnable, true);
+    this.timeoutProcessorFactory=null;
+    this.maxRetries=0;
+    thread.start() ;
+    String sid = props.getProperty("oracle.sid");
+    String hostPort = props.getProperty("oracle.host");
+    String service = props.getProperty("oracle.service");
+    user = props.getProperty("oracle.user");
+     pass = props.getProperty("oracle.password");
+
+    StringTokenizer stn = new StringTokenizer(hostPort, ":");
+    String host = stn.nextToken();
+    String port = stn.nextToken();
+    oracleUrl = "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(host="+host+")"+
+            "(port="+port+"))(CONNECT_DATA=(INSTANCE_NAME="+sid+")" +
+            "(SERVICE_NAME=" + service + ")))";
+   /* System.out.println("Connecting to url " + oracleUrl);
+    Properties oraProp = new Properties();
+    oraProp.setProperty("user", user);
+    oraProp.setProperty("password", pass);
+    try {
+        tcf = (AQjmsTopicConnectionFactory) AQjmsFactory.getTopicConnectionFactory(oracleUrl,oraProp);
+        tCon = tcf.createTopicConnection();
+        tSess = tCon.createTopicSession(true, 0);
+        isStarted = false;
+    }catch(Exception e)
+    {
+        System.out.println("Exception while creating connection " + e);
+        e.printStackTrace();
+    }*/
+    }
     Time time() {
         return time;
     }
@@ -1076,9 +1121,9 @@ public class KafkaAdminClient extends AdminClient {
     }
 
     @Override
-    public CreateTopicsResult createTopics(final Collection<NewTopic> newTopics,
+    public CreateTopicsResult createTopics(final NewTopic newTopics,
                                            final CreateTopicsOptions options) {
-        final Map<String, KafkaFutureImpl<Void>> topicFutures = new HashMap<>(newTopics.size());
+       /* final Map<String, KafkaFutureImpl<Void>> topicFutures = new HashMap<>(newTopics.size());
         final Map<String, CreateTopicsRequest.TopicDetails> topicsMap = new HashMap<>(newTopics.size());
         for (NewTopic newTopic : newTopics) {
             if (topicFutures.get(newTopic.name()) == null) {
@@ -1128,7 +1173,38 @@ public class KafkaAdminClient extends AdminClient {
             }
         }, now);
         return new CreateTopicsResult(new HashMap<String, KafkaFuture<Void>>(topicFutures));
+    */
+       Connection con=null;
+       Statement createTopicst=null;
+       try{
+               System.out.println("Started Connection for Topic creation ");
+               con= DriverManager.getConnection(oracleUrl,user,pass);
+               createTopicst=con.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
+                   ResultSet.CONCUR_UPDATABLE);}
+                   catch(Exception e) {
+                         System.out.println("Exception in sql conn"+e);
+                         e.printStackTrace();
+                   }
+           String qname=newTopics.name();
+           int snum=newTopics.numPartitions();
+           String st1="begin dbms_aqadm.create_sharded_queue(queue_name=>'"+qname+"', multiple_consumers=>TRUE);dbms_aqadm.start_queue(queue_name=>'"+qname+"');end;";
+           String st2="begin dbms_aqadm.set_queue_parameter('"+qname+"', 'KEY_BASED_ENQUEUE',1);dbms_aqadm.set_queue_parameter('"+qname+"', 'SHARD_NUM',"+snum+");dbms_aqadm.set_queue_parameter('"+qname+"', 'STICKY_DEQUEUE', 1);end;";
+
+           try{
+
+               createTopicst.execute(st1);
+               createTopicst.execute(st2);
+       }
+       catch(Exception e){
+           System.out.println("Exception while creating topic" +e);
+           //e.printStackTrace();
+       }
+
+       return null;
     }
+
+
+
 
     @Override
     public DeleteTopicsResult deleteTopics(final Collection<String> topicNames,
