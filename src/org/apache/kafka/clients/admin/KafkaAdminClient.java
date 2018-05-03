@@ -1175,34 +1175,51 @@ public KafkaAdminClient(Properties props){
         return new CreateTopicsResult(new HashMap<String, KafkaFuture<Void>>(topicFutures));
     */
        Connection con=null;
-       Statement createTopicst=null;
-       try{
-               System.out.println("Started Connection for Topic creation ");
-               con= DriverManager.getConnection(oracleUrl,user,pass);
-               createTopicst=con.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,
-                   ResultSet.CONCUR_UPDATABLE);}
-                   catch(Exception e) {
-                         System.out.println("Exception in sql conn"+e);
-                         e.printStackTrace();
-                   }
-           String qname=newTopics.name();
-           int snum=newTopics.numPartitions();
-           String st1="begin dbms_aqadm.create_sharded_queue(queue_name=>'"+qname+"', multiple_consumers=>TRUE);dbms_aqadm.start_queue(queue_name=>'"+qname+"');end;";
-           String st2="begin dbms_aqadm.set_queue_parameter('"+qname+"', 'KEY_BASED_ENQUEUE',1);dbms_aqadm.set_queue_parameter('"+qname+"', 'SHARD_NUM',"+snum+");dbms_aqadm.set_queue_parameter('"+qname+"', 'STICKY_DEQUEUE', 1);end;";
+       CallableStatement createTopicst=null;
+       try {
+           System.out.println("Started Connection for Topic creation ");
+           con = DriverManager.getConnection(oracleUrl, user, pass);
 
-           try{
+           String qname = newTopics.name();
+           int snum = newTopics.numPartitions();
+           String st1 = "begin dbms_aqadm.create_sharded_queue(queue_name=>'" + qname + "', multiple_consumers=>TRUE);dbms_aqadm.start_queue(queue_name=>'" + qname + "');end;";
+           createTopicst=con.prepareCall(st1);
+           createTopicst.execute();
 
-               createTopicst.execute(st1);
-               createTopicst.execute(st2);
+           setQueueParameters(con, qname, "KEY_BASED_ENQUEUE", 1);
+           setQueueParameters(con, qname, "SHARD_NUM", snum);
+           setQueueParameters(con, qname, "STICKY_DEQUEUE", 1);
        }
        catch(Exception e){
            System.out.println("Exception while creating topic" +e);
-           //e.printStackTrace();
+           e.printStackTrace();
+       }
+       finally{
+           try{
+               con.close();
+           }catch(Exception e){
+               System.out.println("Exception in closing connection"+e);
+               e.printStackTrace();
+           }
        }
 
        return null;
     }
 
+public  void setQueueParameters(Connection con, String qname, String param, int val){
+    CallableStatement statement=null;
+    String st2="begin dbms_aqadm.set_queue_parameter(?,?,?);end;";
+    try{
+        statement=con.prepareCall(st2);
+        statement.setString(1,qname);
+        statement.setString(2,param);
+        statement.setString(3,String.valueOf(val));
+        statement.execute();
+    }catch(Exception e){
+        System.out.println("Exception while setting params"+e);
+        e.printStackTrace();
+    }
+}
 
 
 
