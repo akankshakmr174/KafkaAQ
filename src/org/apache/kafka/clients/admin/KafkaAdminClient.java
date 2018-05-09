@@ -103,6 +103,7 @@ import org.slf4j.Logger;
 
 import javax.jms.*;
 import javax.jms.IllegalStateException;
+import javax.xml.transform.Result;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1179,8 +1180,17 @@ public KafkaAdminClient(Properties props){
        try {
            System.out.println("Started Connection for Topic creation ");
            con = DriverManager.getConnection(oracleUrl, user, pass);
-
            String qname = newTopics.name();
+           String query="declare queue varchar2(10); begin select queue_table into ? from user_queue_tables where queue_table='"+qname.toUpperCase()+"';exception when NO_DATA_FOUND then return; end;";
+           createTopicst=con.prepareCall(query);
+           createTopicst.setString(1, "queue");
+           createTopicst.registerOutParameter(1, Types.VARCHAR);
+           createTopicst.executeQuery();
+
+           if(qname.toUpperCase().equals(createTopicst.getString(1))){
+               System.out.println("Queue "+qname.toUpperCase()+" already exists");
+               return null;
+           }
            int snum = newTopics.numPartitions();
            String st1 = "begin dbms_aqadm.create_sharded_queue(queue_name=>'" + qname + "', multiple_consumers=>TRUE);dbms_aqadm.start_queue(queue_name=>'" + qname + "');end;";
            createTopicst=con.prepareCall(st1);
@@ -1192,10 +1202,10 @@ public KafkaAdminClient(Properties props){
        }
        catch(Exception e){
            System.out.println("Exception while creating topic" +e);
-           e.printStackTrace();
-       }
+           e.printStackTrace();}
        finally{
            try{
+               createTopicst.close();
                con.close();
            }catch(Exception e){
                System.out.println("Exception in closing connection"+e);
@@ -1218,6 +1228,14 @@ public  void setQueueParameters(Connection con, String qname, String param, int 
     }catch(Exception e){
         System.out.println("Exception while setting params"+e);
         e.printStackTrace();
+    }
+    finally{
+        try{
+            statement.close();
+        }catch(Exception e){
+           System.out.println("Exception in closing set params statement");
+           e.printStackTrace();
+        }
     }
 }
 

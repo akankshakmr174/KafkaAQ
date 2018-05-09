@@ -80,7 +80,7 @@ class Producer extends Thread {
             e.printStackTrace();
         }
         messageNo++;
-        while (messageNo < 10002) {
+        while (messageNo < 10001) {
             //System.out.println("Message number " + messageNo);
             messageStr = "Message_" + messageNo;
             long startTime = System.currentTimeMillis();
@@ -198,7 +198,7 @@ class Consumer extends Thread{
 
 class KafkaProperties {
 
-    public static final String TOPIC = "topic1";
+    public static final String TOPIC = "topic8";
     public static final String KAFKA_SERVER_URL = "den01syu.us.oracle.com";
     public static final String KAFKA_SERVER_PORT = "9092";
     public static final int KAFKA_PRODUCER_BUFFER_SIZE = 64 * 1024;
@@ -218,23 +218,18 @@ class KafkaProperties {
 public class KafkaConsumerProducerDemo {
     public static void main(String[] args) {
         String ktopic;
-        Scanner s1=new Scanner(System.in);
-        System.out.println("Do you have a topic in mind?0/1");
-        if(s1.nextInt()==1){
-            System.out.println("Please enter that topicname");
-            ktopic=s1.next();
-        }
-        else {
+        System.out.println("Enter the topic name:");
+
             KafkaTopic kTopic = new KafkaTopic(1, (short) 0);
             ktopic = kTopic.returnTopicName();
             System.out.println(ktopic);
-        }
+
         System.out.println("Starting Kafka Client");
         boolean isAsync = false;
-        System.out.println("Starting Producer "+isAsync);
+       System.out.println("Starting Producer "+isAsync);
         long startTime=System.currentTimeMillis();
      try {
-            Producer producerThread = new Producer(ktopic, isAsync);
+            Producer producerThread = new Producer(KafkaProperties.TOPIC, isAsync);
             producerThread.start();
 
             producerThread.join();
@@ -248,7 +243,7 @@ public class KafkaConsumerProducerDemo {
       System.out.println("Starting Consumer");
 
         try{
-            Consumer consumerThread = new Consumer(ktopic);
+            Consumer consumerThread = new Consumer(KafkaProperties.TOPIC);
             startTime=System.currentTimeMillis();
             consumerThread.start();
             consumerThread.join();

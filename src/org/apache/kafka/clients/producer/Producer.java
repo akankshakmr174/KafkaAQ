@@ -23,6 +23,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
 
+import javax.jms.JMSException;
 import java.io.Closeable;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +66,7 @@ public interface Producer<K, V> extends Closeable {
     /**
      * See {@link KafkaProducer#send(ProducerRecord)}
      */
-    Future<RecordMetadata> send(ProducerRecord<K, V> record);
+    Future<RecordMetadata> send(ProducerRecord<K, V> record) throws JMSException;
 
     /**
      * See {@link KafkaProducer#send(ProducerRecord, Callback)}

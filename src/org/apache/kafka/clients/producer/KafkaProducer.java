@@ -1221,6 +1221,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import oracle.jms.*;
+import org.apache.kafka.clients.admin.KafkaAdminClient;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -1260,6 +1262,8 @@ import javax.jms.*;
     boolean isStarted = false;
     int msgcount=0;
     TextMessage[] msgArr=null;
+    static boolean topicFlag=true;
+    KafkaAdminClient topicCreate;
     public KafkaProducer(Properties props)
     {
         super();
@@ -1291,6 +1295,9 @@ import javax.jms.*;
             e.printStackTrace();
         }
         msgArr= new TextMessage[1000];
+        topicCreate=new KafkaAdminClient(props);
+
+
     }
 
     @Override
@@ -1319,13 +1326,17 @@ import javax.jms.*;
     }
 
     @Override
-    public Future<RecordMetadata> send(ProducerRecord<K, V> record)
-    {
+    public Future<RecordMetadata> send(ProducerRecord<K, V> record) throws JMSException {
+        if(topicFlag){
+            System.out.println("I am in topicflag");
+            NewTopic t1=new NewTopic(record.topic(),1,(short)0);
+            topicCreate.createTopics(t1);
+            topicFlag=false;
+        }
         Future<RecordMetadata> dummyRecord = new AQDummyFuture();
-        try {
 
-            if(topic == null)
-            {
+        try {
+            if(topic == null){
                 topic = ((AQjmsSession)tSess).getTopic(user,record.topic());
                 tPublisher=tSess.createPublisher(topic);
                 System.out.println("Topic and publisher Created");
