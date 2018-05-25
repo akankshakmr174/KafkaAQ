@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*package org.apache.kafka.clients.producer;
+package org.apache.kafka.clients.producer;
 
 import org.apache.kafka.clients.ApiVersions;
 import org.apache.kafka.clients.ClientUtils;
@@ -226,7 +226,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
  * <code>UnsupportedVersionException</code> when invoking an API that is not available in the running broker version.
  * </p>
  */
-/*public class KafkaProducer<K, V> implements Producer<K, V> {
+public class KafkaProducer<K, V> implements Producer<K, V> {
 
     private final Logger log;
     private static final AtomicInteger PRODUCER_CLIENT_ID_SEQUENCE = new AtomicInteger(1);
@@ -254,17 +254,19 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
     private final ProducerInterceptors<K, V> interceptors;
     private final ApiVersions apiVersions;
     private final TransactionManager transactionManager;
+    
+    private final KafkaAQProducer<K, V> kafkaAQProducer;
 
     /**
      * A producer is instantiated by providing a set of key-value pairs as configuration. Valid configuration strings
      * are documented <a href="http://kafka.apache.org/documentation.html#producerconfigs">here</a>. Values can be
      * either strings or Objects of the appropriate type (for example a numeric configuration would accept either the
      * string "42" or the integer 42).
-     * @paramconfigs   The producer configs
+     * @param configs   The producer configs
      *
      */
     
-/*    public KafkaProducer()
+    public KafkaProducer()
     {
     	log  = null;
     	  clientId = "DUMMY";
@@ -276,7 +278,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
     	    metadata = null;
     	     accumulator=null;
     	     sender=null;
-             ioThread =null;
+ ioThread =null;
     	    compressionType=null;
     	     errors= null;
     	    time = null;
@@ -288,6 +290,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
     	     interceptors = null;
     	     apiVersions = null;
     	     transactionManager= null;
+    	     kafkaAQProducer = null;
     }
     
     public KafkaProducer(Map<String, Object> configs) {
@@ -305,7 +308,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * @param valueSerializer  The serializer for value that implements {@link Serializer}. The configure() method won't
      *                         be called in the producer when the serializer is passed in directly.
      */
- /*   public KafkaProducer(Map<String, Object> configs, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
+    public KafkaProducer(Map<String, Object> configs, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
         this(new ProducerConfig(ProducerConfig.addSerializerToConfig(configs, keySerializer, valueSerializer)),
                 keySerializer, valueSerializer);
     }
@@ -315,7 +318,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * are documented <a href="http://kafka.apache.org/documentation.html#producerconfigs">here</a>.
      * @param properties   The producer configs
      */
- /*   public KafkaProducer(Properties properties) {
+    public KafkaProducer(Properties properties) {
         this(new ProducerConfig(properties), null, null);
     }
 
@@ -328,8 +331,8 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * @param valueSerializer  The serializer for value that implements {@link Serializer}. The configure() method won't
      *                         be called in the producer when the serializer is passed in directly.
      */
-  /*  public KafkaProducer(Properties properties, Serializer<K> keySerializer, Serializer<V> valueSerializer) {
-        this(new ProducerConfig(ProducerConfig.addSerializerToConfig(properties, keySerializer, valueSerializer)),
+    public KafkaProducer(Properties properties, Serializer<K> keySerializer, Serializer<V> valueSerializer) {    
+        this(new ProducerConfig( ProducerConfig.addSerializerToConfig(properties, keySerializer, valueSerializer)),
                 keySerializer, valueSerializer);
     }
 
@@ -364,7 +367,9 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
             reporters.add(new JmxReporter(JMX_PREFIX));
             this.metrics = new Metrics(metricConfig, reporters, time);
             ProducerMetrics metricsRegistry = new ProducerMetrics(this.metrics);
+            
             this.partitioner = config.getConfiguredInstance(ProducerConfig.PARTITIONER_CLASS_CONFIG, Partitioner.class);
+            
             long retryBackoffMs = config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG);
             if (keySerializer == null) {
                 this.keySerializer = ensureExtended(config.getConfiguredInstance(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
@@ -413,10 +418,15 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
                     time,
                     apiVersions,
                     transactionManager);
+            
             List<InetSocketAddress> addresses = ClientUtils.parseAndValidateAddresses(config.getList(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG));
             this.metadata.update(Cluster.bootstrap(addresses), Collections.<String>emptySet(), time.milliseconds());
             ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config);
             Sensor throttleTimeSensor = Sender.throttleTimeSensor(metricsRegistry.senderMetrics);
+            
+            kafkaAQProducer = new KafkaAQProducer<K,V>(config);
+            //kaAQProducer = null;
+            
             NetworkClient client = new NetworkClient(
                     new Selector(config.getLong(ProducerConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG),
                             this.metrics, time, "producer", channelBuilder, logContext),
@@ -446,7 +456,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
                     this.requestTimeoutMs,
                     config.getLong(ProducerConfig.RETRY_BACKOFF_MS_CONFIG),
                     this.transactionManager,
-                    apiVersions);
+                    apiVersions,kafkaAQProducer);
             String ioThreadName = NETWORK_THREAD_PREFIX + " | " + clientId;
             this.ioThread = new KafkaThread(ioThreadName, this.sender, true);
             this.ioThread.start();
@@ -567,7 +577,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      *         transactional.id is not authorized. See the exception for more details
      * @throws KafkaException if the producer has encountered a previous fatal error or for any other unexpected error
      */
-  /*  public void initTransactions() {
+    public void initTransactions() {
         throwIfNoTransactionManager();
         TransactionalRequestResult result = transactionManager.initializeTransactions();
         sender.wakeup();
@@ -587,7 +597,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      *         transactional.id is not authorized. See the exception for more details
      * @throws KafkaException if the producer has encountered a previous fatal error or for any other unexpected error
      */
- /*   public void beginTransaction() throws ProducerFencedException {
+    public void beginTransaction() throws ProducerFencedException {
         throwIfNoTransactionManager();
         transactionManager.beginTransaction();
     }
@@ -616,7 +626,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * @throws KafkaException if the producer has encountered a previous fatal or abortable error, or for any
      *         other unexpected error
      */
- /*   public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
+    public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
                                          String consumerGroupId) throws ProducerFencedException {
         throwIfNoTransactionManager();
         TransactionalRequestResult result = transactionManager.sendOffsetsToTransaction(offsets, consumerGroupId);
@@ -640,7 +650,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * @throws KafkaException if the producer has encountered a previous fatal or abortable error, or for any
      *         other unexpected error
      */
- /*   public void commitTransaction() throws ProducerFencedException {
+    public void commitTransaction() throws ProducerFencedException {
         throwIfNoTransactionManager();
         TransactionalRequestResult result = transactionManager.beginCommit();
         sender.wakeup();
@@ -660,7 +670,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      *         transactional.id is not authorized. See the exception for more details
      * @throws KafkaException if the producer has encountered a previous fatal error or for any other unexpected error
      */
- /*   public void abortTransaction() throws ProducerFencedException {
+    public void abortTransaction() throws ProducerFencedException {
         throwIfNoTransactionManager();
         TransactionalRequestResult result = transactionManager.beginAbort();
         sender.wakeup();
@@ -671,7 +681,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * Asynchronously send a record to a topic. Equivalent to <code>send(record, null)</code>.
      * See {@link #send(ProducerRecord, Callback)} for details.
      */
- /*   @Override
+    @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
         return send(record, null);
     }
@@ -690,8 +700,8 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * record. If {@link org.apache.kafka.common.record.TimestampType#LOG_APPEND_TIME LogAppendTime} is used for the
      * topic, the timestamp will be the Kafka broker local time when the message is appended.
      * <p>
-     * Since the send call is asynchronous it returns a {@link Future Future} for the
-     * {@link RecordMetadata} that will be assigned to this record. Invoking {@link Future#get()
+     * Since the send call is asynchronous it returns a {@link java.util.concurrent.Future Future} for the
+     * {@link RecordMetadata} that will be assigned to this record. Invoking {@link java.util.concurrent.Future#get()
      * get()} on this future will block until the associated request completes and then return the metadata for the record
      * or throw any exception that occurred while sending the record.
      * <p>
@@ -781,7 +791,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * @throws KafkaException If a Kafka related error occurs that does not belong to the public API exceptions.
      *
      */
-  /*  @Override
+    @Override
     public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
         // intercept the record, which can be potentially modified; this method does not throw exceptions
         ProducerRecord<K, V> interceptedRecord = this.interceptors == null ? record : this.interceptors.onSend(record);
@@ -791,12 +801,15 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
     /**
      * Implementation of asynchronously send a record to a topic.
      */
-  /*  private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback callback) {
+    private Future<RecordMetadata> doSend(ProducerRecord<K, V> record, Callback callback) {
         TopicPartition tp = null;
         try {
             // first make sure the metadata for the topic is available
-            ClusterAndWaitTime clusterAndWaitTime = waitOnMetadata(record.topic(), record.partition(), maxBlockTimeMs);
+            ClusterAndWaitTime clusterAndWaitTime = waitOnMetadata(record.topic(), record.partition(), maxBlockTimeMs);            
             long remainingWaitMs = Math.max(0, maxBlockTimeMs - clusterAndWaitTime.waitedOnMetadataMs);
+            
+          //  System.out.println("ClusterRemaining Wait Ms " + remainingWaitMs);
+            
             Cluster cluster = clusterAndWaitTime.cluster;
             byte[] serializedKey;
             try {
@@ -814,16 +827,41 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
                         " to class " + producerConfig.getClass(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG).getName() +
                         " specified in value.serializer", cce);
             }
+            
+         /*   System.out.print("Serialized Key: ");
+            for(byte bK : serializedKey)
+            {
+            	System.out.print(bK +" ");
+            }
+            
+            System.out.print("\nSerialized Value: ");
+            for(byte bV : serializedValue)
+            {
+            	System.out.print(bV +" ");
+            }
+            System.out.println("");*/
+            
             int partition = partition(record, serializedKey, serializedValue, cluster);
+           // System.out.println("Going in partition " + partition);
+            
             tp = new TopicPartition(record.topic(), partition);
 
             setReadOnly(record.headers());
             Header[] headers = record.headers().toArray();
+            for(Header h :headers)
+            {
+            	System.out.println("Header Key " + h.key() +" value = " + h.value());
+            }
 
             int serializedSize = AbstractRecords.estimateSizeInBytesUpperBound(apiVersions.maxUsableProduceMagic(),
                     compressionType, serializedKey, serializedValue, headers);
+            //System.out.println("Message serializedSize = " + serializedSize);
+            
             ensureValidRecordSize(serializedSize);
             long timestamp = record.timestamp() == null ? time.milliseconds() : record.timestamp();
+            
+            //System.out.println("Sending record {} with callback {} to topic {} partition {}" + record +" "+ callback + " " +record.topic() +" " +partition);
+            
             log.trace("Sending record {} with callback {} to topic {} partition {}", record, callback, record.topic(), partition);
             // producer callback will make sure to call both 'callback' and interceptor callback
             Callback interceptCallback = this.interceptors == null ? callback : new InterceptorCallback<>(callback, this.interceptors, tp);
@@ -833,8 +871,11 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
 
             RecordAccumulator.RecordAppendResult result = accumulator.append(tp, timestamp, serializedKey,
                     serializedValue, headers, interceptCallback, remainingWaitMs);
+      //      System.out.println("Is accumulator batch full?= " + result.batchIsFull + " Is newBatch?= " + result.newBatchCreated);
+            
             if (result.batchIsFull || result.newBatchCreated) {
                 log.trace("Waking up the sender since topic {} partition {} is either full or getting a new batch", record.topic(), partition);
+                System.out.println("Waking up Sender " + record.topic() + " Partition " + partition );
                 this.sender.wakeup();
             }
             return result.future;
@@ -886,7 +927,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * @param maxWaitMs The maximum time in ms for waiting on the metadata
      * @return The cluster containing topic metadata and the amount of time we waited in ms
      */
- /*   private ClusterAndWaitTime waitOnMetadata(String topic, Integer partition, long maxWaitMs) throws InterruptedException {
+    private ClusterAndWaitTime waitOnMetadata(String topic, Integer partition, long maxWaitMs) throws InterruptedException {
         // add topic to metadata topic list if it is not there already and reset expiry
         metadata.add(topic);
         Cluster cluster = metadata.fetch();
@@ -935,7 +976,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
     /**
      * Validate that the record size isn't too large
      */
- /*   private void ensureValidRecordSize(int size) {
+    private void ensureValidRecordSize(int size) {
         if (size > this.maxRequestSize)
             throw new RecordTooLargeException("The message is " + size +
                     " bytes when serialized which is larger than the maximum request size you have configured with the " +
@@ -982,7 +1023,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      *
      * @throws InterruptException If the thread is interrupted while blocked
      */
- /*   @Override
+    @Override
     public void flush() {
         log.trace("Flushing accumulated records in producer.");
         this.accumulator.beginFlush();
@@ -999,7 +1040,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * @throws org.apache.kafka.common.errors.AuthenticationException if authentication fails. See the exception for more details
      * @throws InterruptException If the thread is interrupted while blocked
      */
-/*    @Override
+    @Override
     public List<PartitionInfo> partitionsFor(String topic) {
         Objects.requireNonNull(topic, "topic cannot be null");
         try {
@@ -1012,7 +1053,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
     /**
      * Get the full set of internal metrics maintained by the producer.
      */
-/*    @Override
+    @Override
     public Map<MetricName, ? extends Metric> metrics() {
         return Collections.unmodifiableMap(this.metrics.metrics());
     }
@@ -1028,7 +1069,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      *
      * @throws InterruptException If the thread is interrupted while blocked
      */
- /*   @Override
+    @Override
     public void close() {
         close(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
     }
@@ -1049,7 +1090,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * @throws InterruptException If the thread is interrupted while blocked
      * @throws IllegalArgumentException If the <code>timeout</code> is negative.
      */
-/*    @Override
+    @Override
     public void close(long timeout, TimeUnit timeUnit) {
         close(timeout, timeUnit, false);
     }
@@ -1094,6 +1135,9 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
                 }
             }
         }
+        System.out.println("Closing Kafka AQ Producer");
+        kafkaAQProducer.close();
+        System.out.println("Kafka AQ Producer Closed");
 
         ClientUtils.closeQuietly(interceptors, "producer interceptors", firstException);
         ClientUtils.closeQuietly(metrics, "producer metrics", firstException);
@@ -1121,7 +1165,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * if the record has partition returns the value otherwise
      * calls configured partitioner class to compute the partition.
      */
-/*    private int partition(ProducerRecord<K, V> record, byte[] serializedKey, byte[] serializedValue, Cluster cluster) {
+    private int partition(ProducerRecord<K, V> record, byte[] serializedKey, byte[] serializedValue, Cluster cluster) {
         Integer partition = record.partition();
         return partition != null ?
                 partition :
@@ -1183,7 +1227,7 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
      * A callback called when producer request is complete. It in turn calls user-supplied callback (if given) and
      * notifies producer interceptors about the request completion.
      */
-/*    private static class InterceptorCallback<K, V> implements Callback {
+    private static class InterceptorCallback<K, V> implements Callback {
         private final Callback userCallback;
         private final ProducerInterceptors<K, V> interceptors;
         private final TopicPartition tp;
@@ -1205,251 +1249,6 @@ import static org.apache.kafka.common.serialization.ExtendedSerializer.Wrapper.e
             }
             if (this.userCallback != null)
                 this.userCallback.onCompletion(metadata, exception);
-        }
-    }
-}
-*/
-package org.apache.kafka.clients.producer;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.StringTokenizer;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import oracle.jms.*;
-import org.apache.kafka.clients.admin.KafkaAdminClient;
-import org.apache.kafka.clients.admin.NewTopic;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.common.Metric;
-import org.apache.kafka.common.MetricName;
-import org.apache.kafka.common.PartitionInfo;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.errors.ProducerFencedException;
-
-import javax.jms.*;
-
-
-
-
-
- /*   void enqueueMessages(TextMessage [] msgs) throws Exception
-    {
-        for(int i =0 ; i<msgs.length; i ++)
-            tPublisher.publish(topic,msgs[i], DeliveryMode.PERSISTENT,5,
-                    AQjmsConstants.EXPIRATION_NEVER);
-    }*/
-
-
-
-
-    public class KafkaProducer<K,V> implements Producer<K,V>{
-
-    /*
-     * AQjmsSession, AQjmsConnection, AQjmsPublisher
-     */
-
-    TopicConnectionFactory tcf;
-    TopicConnection tCon;
-    TopicSession tSess;
-    Topic topic;
-    TopicPublisher tPublisher;
-    String oracleUrl;
-    String user;
-    boolean isStarted = false;
-    int msgcount=0;
-    TextMessage[] msgArr=null;
-    static boolean topicFlag=true;
-    KafkaAdminClient topicCreate;
-    public KafkaProducer(Properties props)
-    {
-        super();
-        //super(props);
-        String sid = props.getProperty("oracle.sid");
-        String hostPort = props.getProperty("oracle.host");
-        String service = props.getProperty("oracle.service");
-        user = props.getProperty("oracle.user");
-        String pass = props.getProperty("oracle.password");
-
-        StringTokenizer stn = new StringTokenizer(hostPort, ":");
-        String host = stn.nextToken();
-        String port = stn.nextToken();
-        oracleUrl = "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(host="+host+")"+
-                "(port="+port+"))(CONNECT_DATA=(INSTANCE_NAME="+sid+")" +
-                "(SERVICE_NAME=" + service + ")))";
-        System.out.println("Connecting to url " + oracleUrl);
-        Properties oraProp = new Properties();
-        oraProp.setProperty("user", user);
-        oraProp.setProperty("password", pass);
-        try {
-            tcf = (AQjmsTopicConnectionFactory) AQjmsFactory.getTopicConnectionFactory(oracleUrl,oraProp);
-            tCon = tcf.createTopicConnection();
-            tSess = tCon.createTopicSession(true, 0);
-            isStarted = false;
-        }catch(Exception e)
-        {
-            System.out.println("Exception while creating connection " + e);
-            e.printStackTrace();
-        }
-        msgArr= new TextMessage[1000];
-        topicCreate=new KafkaAdminClient(props);
-
-
-    }
-
-    @Override
-    public void initTransactions() {
-
-    }
-
-    @Override
-    public void beginTransaction() throws ProducerFencedException {
-
-    }
-
-    @Override
-    public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId) throws ProducerFencedException {
-
-    }
-
-    @Override
-    public void commitTransaction() throws ProducerFencedException {
-
-    }
-
-    @Override
-    public void abortTransaction() throws ProducerFencedException {
-
-    }
-
-    @Override
-    public Future<RecordMetadata> send(ProducerRecord<K, V> record) throws JMSException {
-        if(topicFlag){
-            System.out.println("I am in topicflag");
-            NewTopic t1=new NewTopic(record.topic(),1,(short)0);
-            topicCreate.createTopics(t1);
-            topicFlag=false;
-        }
-        Future<RecordMetadata> dummyRecord = new AQDummyFuture();
-
-        try {
-            if(topic == null){
-                topic = ((AQjmsSession)tSess).getTopic(user,record.topic());
-                tPublisher=tSess.createPublisher(topic);
-                System.out.println("Topic and publisher Created");
-            }
-
-            if(!isStarted)   {
-                System.out.println("Strated Connection for Producer ");
-                tCon.start();
-                isStarted = true;
-            }
-
-            TextMessage txtMsg = createTextMsg(record.value().toString(), record.key().toString());
-            msgArr[msgcount]=txtMsg;
-            msgcount++;
-            //System.out.print(msgcount);
-            if(msgcount%1000 == 0) {
-                ((AQjmsProducer) tPublisher).bulkSend(topic, msgArr);
-                tSess.commit();
-                System.out.println("Commiteed 10k Messages ");
-                 msgcount=0;
-            }
-           //tPublisher.publish(topic, txtMsg);
-
-
-        } catch(Exception e)  {
-            System.out.println("Exception while Sending message to AQ " + e );
-            e.printStackTrace();
-        }
-
-        return dummyRecord;
-    }
-
-    @Override
-    public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
-        return null;
-    }
-
-    @Override
-    public void flush() {
-
-    }
-
-    @Override
-    public List<PartitionInfo> partitionsFor(String topic) {
-        return null;
-    }
-
-    @Override
-    public Map<MetricName, ? extends Metric> metrics() {
-        return null;
-    }
-
-    public TextMessage createTextMsg(String text, String key) throws Exception    {
-        TextMessage txtMsg = tSess.createTextMessage();
-        if(txtMsg == null)
-            System.out.println("Message not created " + text);
-        txtMsg.setJMSCorrelationID(key);
-        txtMsg.setText(text);
-        return txtMsg;
-    }
-
-    public  void close()
-    {
-        try {
-            if(tSess !=null)
-                tSess.close();
-
-            if(tCon!=null)
-                tCon.close();
-
-            isStarted = false;
-        }catch(Exception e )
-        {
-            System.out.println("Exception while clossing producer " +e);
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void close(long timeout, TimeUnit unit) {
-
-    }
-
-
-    public final class AQDummyFuture implements Future<RecordMetadata>
-    {
-        @Override
-        public boolean cancel(boolean interrupt) {
-            return false;
-        }
-
-        @Override
-        public boolean isCancelled() {
-            return false;
-        }
-
-        @Override
-        public RecordMetadata get() throws InterruptedException, ExecutionException {
-            return null;
-        }
-
-
-        @Override
-        public RecordMetadata get(long arg0, TimeUnit arg1)
-                throws InterruptedException, ExecutionException, TimeoutException {
-            // TODO Auto-generated method stub
-            return null;
-        }
-
-        @Override
-        public boolean isDone() {
-            // TODO Auto-generated method stub
-            return false;
         }
     }
 }
