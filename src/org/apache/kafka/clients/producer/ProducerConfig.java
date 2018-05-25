@@ -53,6 +53,12 @@ public class ProducerConfig extends AbstractConfig {
     /** <code>metadata.max.age.ms</code> */
     public static final String METADATA_MAX_AGE_CONFIG = CommonClientConfigs.METADATA_MAX_AGE_CONFIG;
     private static final String METADATA_MAX_AGE_DOC = CommonClientConfigs.METADATA_MAX_AGE_DOC;
+    
+    public static final String ORACLE_SID      = CommonClientConfigs.ORACLE_SID;
+    public static final String ORACLE_HOST     = CommonClientConfigs.ORACLE_HOST;    
+    public static final String ORACLE_SERVICE  = CommonClientConfigs.ORACLE_SERVICE;
+    public static final String ORACLE_USER     = CommonClientConfigs.ORACLE_USER;
+    public static final String ORACLE_PASSWORD = CommonClientConfigs.ORACLE_PASSWORD;
 
     /** <code>batch.size</code> */
     public static final String BATCH_SIZE_CONFIG = "batch.size";
@@ -326,7 +332,13 @@ public class ProducerConfig extends AbstractConfig {
                                         null,
                                         new ConfigDef.NonEmptyString(),
                                         Importance.LOW,
-                                        TRANSACTIONAL_ID_DOC);
+                                        TRANSACTIONAL_ID_DOC)                                
+                                
+                                .define(ORACLE_HOST, Type.STRING, "", Importance.MEDIUM, "")
+                                .define(ORACLE_SID, Type.STRING, "", Importance.MEDIUM, "")
+                                .define(ORACLE_SERVICE, Type.STRING, "", Importance.MEDIUM, "")
+                                .define(ORACLE_USER, Type.STRING, "", Importance.MEDIUM, "")
+                                .define(ORACLE_PASSWORD, Type.STRING, "", Importance.MEDIUM, "");
     }
 
     @Override

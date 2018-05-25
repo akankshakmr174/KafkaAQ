@@ -88,6 +88,11 @@ public class CommonClientConfigs {
                                                          + "elapses the client will resend the request if necessary or fail the request if "
                                                          + "retries are exhausted.";
 
+    public static final String ORACLE_SID ="oracle.sid";
+    public static final String ORACLE_HOST ="oracle.host";
+    public static final String ORACLE_SERVICE ="oracle.service";
+    public static final String ORACLE_USER ="oracle.user";
+    public static final String ORACLE_PASSWORD ="oracle.password";
     /**
      * Postprocess the configuration so that exponential backoff is disabled when reconnect backoff
      * is explicitly configured but the maximum reconnect backoff is not explicitly configured.

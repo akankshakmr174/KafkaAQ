@@ -23,6 +23,7 @@ import org.apache.kafka.clients.KafkaClient;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.NetworkClientUtils;
 import org.apache.kafka.clients.RequestCompletionHandler;
+import org.apache.kafka.clients.producer.KafkaAQProducer;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.MetricName;
@@ -46,6 +47,8 @@ import org.apache.kafka.common.metrics.stats.Max;
 import org.apache.kafka.common.metrics.stats.Meter;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.record.MemoryRecords;
+import org.apache.kafka.common.record.MutableRecordBatch;
+import org.apache.kafka.common.record.Record;
 import org.apache.kafka.common.record.RecordBatch;
 import org.apache.kafka.common.requests.AbstractRequest;
 import org.apache.kafka.common.requests.InitProducerIdRequest;
@@ -59,6 +62,9 @@ import org.apache.kafka.common.utils.Utils;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -119,6 +125,8 @@ public class Sender implements Runnable {
 
     /* all the state related to transactions, in particular the producer id, producer epoch, and sequence numbers */
     private final TransactionManager transactionManager;
+    
+    private final KafkaAQProducer<Integer, String> aqProducer;
 
     public Sender(LogContext logContext,
                   KafkaClient client,
@@ -133,7 +141,8 @@ public class Sender implements Runnable {
                   int requestTimeout,
                   long retryBackoffMs,
                   TransactionManager transactionManager,
-                  ApiVersions apiVersions) {
+                  ApiVersions apiVersions,
+                  KafkaAQProducer aqProducer) {
         this.log = logContext.logger(Sender.class);
         this.client = client;
         this.accumulator = accumulator;
@@ -149,6 +158,7 @@ public class Sender implements Runnable {
         this.retryBackoffMs = retryBackoffMs;
         this.apiVersions = apiVersions;
         this.transactionManager = transactionManager;
+        this.aqProducer = aqProducer;
     }
 
     /**
@@ -200,6 +210,7 @@ public class Sender implements Runnable {
      */
     void run(long now) {
         if (transactionManager != null) {
+        //	System.out.println(" Sender.run(): Transaction Manager is not null");
             try {
                 if (transactionManager.shouldResetProducerStateAfterResolvingSequences())
                     // Check if the previous run expired batches which requires a reset of the producer state.
@@ -236,7 +247,9 @@ public class Sender implements Runnable {
         }
 
         long pollTimeout = sendProducerData(now);
+       
         client.poll(pollTimeout, now);
+       // System.out.println("Sender.run(time): Polling for " + pollTimeout);
     }
 
     private long sendProducerData(long now) {
@@ -254,12 +267,14 @@ public class Sender implements Runnable {
                 this.metadata.add(topic);
             this.metadata.requestUpdate();
         }
-
+       // System.out.println("SendProduceData: ReadyNodes : " + result.readyNodes.size());
+        
         // remove any nodes we aren't ready to send to
         Iterator<Node> iter = result.readyNodes.iterator();
         long notReadyTimeout = Long.MAX_VALUE;
         while (iter.hasNext()) {
             Node node = iter.next();
+            //System.out.println("Ready Node: Host " + node.host() + " Port: " + node.port());
             if (!this.client.ready(node, now)) {
                 iter.remove();
                 notReadyTimeout = Math.min(notReadyTimeout, this.client.connectionDelay(node, now));
@@ -269,6 +284,17 @@ public class Sender implements Runnable {
         // create produce requests
         Map<Integer, List<ProducerBatch>> batches = this.accumulator.drain(cluster, result.readyNodes,
                 this.maxRequestSize, now);
+       // System.out.println("#Batches to Drain " + batches.size());
+        for(Integer nodeI : batches.keySet()) {
+        	//System.out.println("Batch for Node " + nodeI.intValue());
+        	List<ProducerBatch> pBatch = batches.get(nodeI);
+        	//System.out.println("#Batch   " + pBatch.size());
+        	/*for(ProducerBatch batchNow : pBatch)
+        		System.out.println("Batch Partition " + batchNow.topicPartition.partition() + " Records " + batchNow.recordCount); */	
+        	
+        }
+        
+        
         if (guaranteeMessageOrder) {
             // Mute all the partitions drained
             for (List<ProducerBatch> batchList : batches.values()) {
@@ -298,14 +324,19 @@ public class Sender implements Runnable {
         // that isn't yet sendable (e.g. lingering, backing off). Note that this specifically does not include nodes
         // with sendable data that aren't ready to send since they would cause busy looping.
         long pollTimeout = Math.min(result.nextReadyCheckDelayMs, notReadyTimeout);
+         //System.out.println("SendProduceData: Poll TimeOut " + pollTimeout);
         if (!result.readyNodes.isEmpty()) {
+        	//System.out.println("Nodes with data ready to send " + result.readyNodes);
             log.trace("Nodes with data ready to send: {}", result.readyNodes);
             // if some partitions are already ready to be sent, the select time would be 0;
             // otherwise if some partition already has some data accumulated but not ready yet,
             // the select time will be the time difference between now and its linger expiry time;
             // otherwise the select time will be the time difference between now and the metadata expiry time;
             pollTimeout = 0;
+        } else {
+        	//System.out.println("result.readyNodes.isEmpty() = TRUE");
         }
+        	
         sendProduceRequests(batches, now);
 
         return pollTimeout;
@@ -459,6 +490,7 @@ public class Sender implements Runnable {
     private void handleProduceResponse(ClientResponse response, Map<TopicPartition, ProducerBatch> batches, long now) {
         RequestHeader requestHeader = response.requestHeader();
         int correlationId = requestHeader.correlationId();
+        System.out.println("CorrelationID from the response " + correlationId);
         if (response.wasDisconnected()) {
             log.trace("Cancelled request with header {} due to node {} being disconnected",
                     requestHeader, response.destination());
@@ -478,6 +510,7 @@ public class Sender implements Runnable {
                     TopicPartition tp = entry.getKey();
                     ProduceResponse.PartitionResponse partResp = entry.getValue();
                     ProducerBatch batch = batches.get(tp);
+                    System.out.println("Response = " + partResp);
                     completeBatch(batch, partResp, correlationId, now);
                 }
                 this.sensors.recordLatency(response.destination(), response.requestLatencyMs());
@@ -578,6 +611,7 @@ public class Sender implements Runnable {
     }
 
     private void completeBatch(ProducerBatch batch, ProduceResponse.PartitionResponse response) {
+    	System.out.println("Response for batch " + response);
         if (transactionManager != null) {
             if (transactionManager.hasProducerIdAndEpoch(batch.producerId(), batch.producerEpoch())) {
                 transactionManager.maybeUpdateLastAckedSequence(batch.topicPartition, batch.baseSequence() + batch.recordCount - 1);
@@ -643,6 +677,7 @@ public class Sender implements Runnable {
      * Transfer the record batches into a list of produce requests on a per-node basis
      */
     private void sendProduceRequests(Map<Integer, List<ProducerBatch>> collated, long now) {
+    	//System.out.println("Send Produce Requests size: " + collated.size());
         for (Map.Entry<Integer, List<ProducerBatch>> entry : collated.entrySet())
             sendProduceRequest(now, entry.getKey(), acks, requestTimeout, entry.getValue());
     }
@@ -651,8 +686,12 @@ public class Sender implements Runnable {
      * Create a produce request from the given record batches
      */
     private void sendProduceRequest(long now, int destination, short acks, int timeout, List<ProducerBatch> batches) {
+    	
         if (batches.isEmpty())
+        {
+        	//System.out.println("sendProduceRequest for batches: Empty Batch");
             return;
+        }
 
         Map<TopicPartition, MemoryRecords> produceRecordsByPartition = new HashMap<>(batches.size());
         final Map<TopicPartition, ProducerBatch> recordsByPartition = new HashMap<>(batches.size());
@@ -663,10 +702,12 @@ public class Sender implements Runnable {
             if (batch.magic() < minUsedMagic)
                 minUsedMagic = batch.magic();
         }
-
+        System.out.println("In Send Produce REquest Batches size " + batches.size());
+        byte dst[] = null;
         for (ProducerBatch batch : batches) {
             TopicPartition tp = batch.topicPartition;
             MemoryRecords records = batch.records();
+          //  System.out.println("SendProduceRequest for batches: TopicPartiton , #records " + tp.partition()  +", " + batch.recordCount );
 
             // down convert if necessary to the minimum magic used. In general, there can be a delay between the time
             // that the producer starts building the batch and the time that we send the request, and we may have
@@ -677,6 +718,33 @@ public class Sender implements Runnable {
             // which is supporting the new magic version to one which doesn't, then we will need to convert.
             if (!records.hasMatchingMagic(minUsedMagic))
                 records = batch.records().downConvert(minUsedMagic, 0, time).records();
+           
+            /*System.out.println("MemoryRecords = " + records.sizeInBytes());
+            
+            Iterator<MutableRecordBatch> mrbIter = records.batches().iterator();
+           
+            while(mrbIter.hasNext())
+            {
+            	MutableRecordBatch mbr = mrbIter.next();
+            	System.out.println("Mbr Last Sequence number " + mbr.lastSequence());
+            	Iterator<Record> rIter  = mbr.iterator();
+            	while(rIter.hasNext())
+            	{
+            		Record r = rIter.next();
+            		System.out.println("Record r Key Size Value Size  " + r.keySize() + ", " + r.valueSize());
+            		ByteBuffer keyBuffer = r.key();
+            		ByteBuffer valueBuffer = r.value();
+            		System.out.println("KeyBuffer , Value Buffer " + keyBuffer + ", " + valueBuffer);
+            		try {
+            		 dst = new byte[keyBuffer.remaining()];
+            		 keyBuffer.get(dst);
+            		 System.out.println("KEY = " + Arrays.toString(dst));
+            		 dst = new byte[valueBuffer.remaining()];
+            		 valueBuffer.get(dst);
+            		 System.out.println("value = " + Arrays.toString(dst));
+            		}catch (Exception e) {System.out.println("Exception while getting buffers " + e); e.printStackTrace();}
+            	}
+            }*/
             produceRecordsByPartition.put(tp, records);
             recordsByPartition.put(tp, batch);
         }
@@ -693,10 +761,38 @@ public class Sender implements Runnable {
             }
         };
 
+        
         String nodeId = Integer.toString(destination);
         ClientRequest clientRequest = client.newClientRequest(nodeId, requestBuilder, now, acks != 0, callback);
-        client.send(clientRequest, now);
+        sendToAQ(clientRequest,recordsByPartition,now);
+       // client.send(clientRequest, now);
         log.trace("Sent produce request to {}: {}", nodeId, requestBuilder);
+    }
+    
+    public void sendToAQ(ClientRequest clientR, Map<TopicPartition, ProducerBatch> batchesByPartition, long now)
+    {
+    	System.out.println("Publishing to AQ ");
+    	try {
+    		aqProducer.publish(clientR);
+    		
+    		Iterator<Map.Entry<TopicPartition,ProducerBatch>> batchPIter = batchesByPartition.entrySet().iterator();
+    		while(batchPIter.hasNext())
+    		{
+    			Map.Entry<TopicPartition,ProducerBatch> entry = batchPIter.next();
+    			TopicPartition tp = entry.getKey();
+    			ProducerBatch pBatch = entry.getValue();
+    			System.out.println("Completing Batch for topic " + tp.topic()+", Partiton " + tp.partition());
+    			ProduceResponse.PartitionResponse resp = new  ProduceResponse.PartitionResponse(null, 0, System.currentTimeMillis(),0);
+    			completeBatch(pBatch, resp);
+    			System.out.println("Completed Batch by AQ ");
+    		}
+    		
+    	} catch(Exception e ) {
+    		System.out.println("Exception from AQProducer " + e);
+    		e.printStackTrace();
+    	}
+    	
+    	
     }
 
     /**
