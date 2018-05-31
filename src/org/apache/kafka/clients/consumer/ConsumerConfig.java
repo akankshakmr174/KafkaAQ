@@ -46,6 +46,12 @@ public class ConsumerConfig extends AbstractConfig {
      * THESE ARE PART OF THE PUBLIC API AND CHANGE WILL BREAK USER CODE.
      */
 
+    public static final String ORACLE_SID ="oracle.sid";
+    public static final String ORACLE_HOST ="oracle.host";
+    public static final String ORACLE_SERVICE ="oracle.service";
+    public static final String ORACLE_USER ="oracle.user";
+    public static final String ORACLE_PASSWORD ="oracle.password";
+
     /**
      * <code>group.id</code>
      */
