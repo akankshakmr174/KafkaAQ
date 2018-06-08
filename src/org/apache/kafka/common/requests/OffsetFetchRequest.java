@@ -123,7 +123,7 @@ public class OffsetFetchRequest extends AbstractRequest {
     private final List<TopicPartition> partitions;
 
     public static OffsetFetchRequest forAllPartitions(String groupId) {
-        return new Builder(groupId, null).build((short) 2);
+        return new OffsetFetchRequest.Builder(groupId, null).build((short) 2);
     }
 
     // v0, v1, and v2 have the same fields.

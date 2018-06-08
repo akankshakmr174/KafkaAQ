@@ -49,7 +49,7 @@ public class CopyOnWriteMap<K, V> implements ConcurrentMap<K, V> {
     }
 
     @Override
-    public Set<Entry<K, V>> entrySet() {
+    public Set<java.util.Map.Entry<K, V>> entrySet() {
         return map.entrySet();
     }
 

@@ -159,15 +159,15 @@ public class ProduceRequest extends AbstractRequest {
             this.partitionRecords = partitionRecords;
             this.transactionalId = transactionalId;
         }
-        //Ishan
-        public Map<TopicPartition, MemoryRecords> getPartitionMap()
-        {
-        	return this.partitionRecords;
-        }
 
         @Override
         public ProduceRequest build(short version) {
             return new ProduceRequest(version, acks, timeout, partitionRecords, transactionalId);
+        }
+   //Ishan
+        public Map<TopicPartition, MemoryRecords> getPartitionMap()
+        {
+        	return this.partitionRecords;
         }
 
         @Override

@@ -177,10 +177,10 @@ public class ApiVersionsResponse extends AbstractResponse {
     }
 
     public static ApiVersionsResponse createApiVersionsResponse(int throttleTimeMs, final byte minMagic) {
-        List<ApiVersion> versionList = new ArrayList<>();
+        List<ApiVersionsResponse.ApiVersion> versionList = new ArrayList<>();
         for (ApiKeys apiKey : ApiKeys.values()) {
             if (apiKey.minRequiredInterBrokerMagic <= minMagic) {
-                versionList.add(new ApiVersion(apiKey));
+                versionList.add(new ApiVersionsResponse.ApiVersion(apiKey));
             }
         }
         return new ApiVersionsResponse(throttleTimeMs, Errors.NONE, versionList);

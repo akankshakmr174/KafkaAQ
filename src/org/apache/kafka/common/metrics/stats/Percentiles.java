@@ -109,7 +109,7 @@ public class Percentiles extends SampledStat implements CompoundStat {
         hist.histogram.record(value);
     }
 
-    private static class HistogramSample extends Sample {
+    private static class HistogramSample extends SampledStat.Sample {
         private final Histogram histogram;
 
         private HistogramSample(BinScheme scheme, long now) {

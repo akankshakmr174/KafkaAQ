@@ -71,7 +71,7 @@ public interface ExtendedDeserializer<T> extends Deserializer<T> {
         }
 
         public static <T> ExtendedDeserializer<T> ensureExtended(Deserializer<T> deserializer) {
-            return deserializer == null ?  null : deserializer instanceof ExtendedDeserializer ? (ExtendedDeserializer<T>) deserializer : new Wrapper<>(deserializer);
+            return deserializer == null ?  null : deserializer instanceof ExtendedDeserializer ? (ExtendedDeserializer<T>) deserializer : new ExtendedDeserializer.Wrapper<>(deserializer);
         }
     }
 }

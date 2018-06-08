@@ -71,7 +71,7 @@ public interface ExtendedSerializer<T> extends Serializer<T> {
         }
 
         public static <T> ExtendedSerializer<T> ensureExtended(Serializer<T> serializer) {
-            return serializer == null ? null : serializer instanceof ExtendedSerializer ? (ExtendedSerializer<T>) serializer : new Wrapper<>(serializer);
+            return serializer == null ? null : serializer instanceof ExtendedSerializer ? (ExtendedSerializer<T>) serializer : new ExtendedSerializer.Wrapper<>(serializer);
         }
     }
 }
