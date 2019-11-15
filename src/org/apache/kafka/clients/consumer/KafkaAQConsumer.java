@@ -18,6 +18,7 @@ import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.NetworkClient;
 import org.apache.kafka.clients.consumer.internals.*;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.*;
 import org.apache.kafka.common.config.ConfigException;
@@ -38,7 +39,7 @@ import org.slf4j.Logger;
 import javax.jms.*;
 
 
-    public class KafkaAQConsumer<K, V> extends KafkaConsumer<K, V> {
+    public class KafkaAQConsumer<K, V> {
 
         /*
          * AQjmsSession, AQjmsConnection, AQjmsPublisher
@@ -52,37 +53,39 @@ import javax.jms.*;
         String oracleUrl;
         String user;
         boolean isStarted = false;
+        TopicSubscriber tCons;
         java.sql.Connection dbConn = null;
-        TextMessage msg = null;
+        ArrayList<AQjmsBytesMessage> aqjmsMessages = new ArrayList<AQjmsBytesMessage>(10);
         int numMsgs = 10;
 
-        public KafkaAQConsumer(Properties props) {
-            super();
-            //super(props);
-            String sid = props.getProperty("oracle.sid");
-            String hostPort = props.getProperty("oracle.host");
-            String service = props.getProperty("oracle.service");
-            user = props.getProperty("oracle.user");
-            String pass = props.getProperty("oracle.password");
+        public KafkaAQConsumer(ConsumerConfig config){
+            String sid = config.getString(ConsumerConfig.ORACLE_SID);
+            String hostPort = config.getString(ConsumerConfig.ORACLE_HOST);
+            String service = config.getString(ConsumerConfig.ORACLE_SERVICE);
+            user = config.getString(ConsumerConfig.ORACLE_USER);
+            String pass = config.getString(ConsumerConfig.ORACLE_PASSWORD);
+
+            System.out.println("Kafka AQ Consumer: sid " + sid + " hostPort " + hostPort  + " service " + service + " user " + user + " pass " + pass);
 
             StringTokenizer stn = new StringTokenizer(hostPort, ":");
             String host = stn.nextToken();
             String port = stn.nextToken();
-            oracleUrl = "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(host=" + host + ")" +
-                    "(port=" + port + "))(CONNECT_DATA=(INSTANCE_NAME=" + sid + ")" +
+            oracleUrl = "jdbc:oracle:thin:@(DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(host="+host+")"+
+                    "(port="+port+"))(CONNECT_DATA=(INSTANCE_NAME="+sid+")" +
                     "(SERVICE_NAME=" + service + ")))";
             System.out.println("Connecting to url " + oracleUrl);
             Properties oraProp = new Properties();
             oraProp.setProperty("user", user);
             oraProp.setProperty("password", pass);
-            try {
-                tcf = (AQjmsTopicConnectionFactory) AQjmsFactory.getTopicConnectionFactory(oracleUrl, oraProp);
-                tCon = tcf.createTopicConnection();
-                tSess = tCon.createTopicSession(true, Session.CLIENT_ACKNOWLEDGE);
-                isStarted = false;
-                dbConn = ((AQjmsSession) tSess).getDBConnection();
 
-            } catch (Exception e) {
+            try {
+                tcf = (AQjmsTopicConnectionFactory) AQjmsFactory.getTopicConnectionFactory(oracleUrl,oraProp);
+                tCon = tcf.createTopicConnection();
+                tSess = tCon.createTopicSession(true, 0);
+                isStarted = false;
+                System.out.println("Kafka AQ Consumer Set");
+            }catch(Exception e)
+            {
                 System.out.println("Exception while creating connection " + e);
                 e.printStackTrace();
             }
@@ -98,7 +101,7 @@ import javax.jms.*;
             return null;
         }
 
-        @Override
+
         public void subscribe(Collection<String> topics) {
             Iterator<String> topicIterate = topics.iterator();
             while (topicIterate.hasNext()) {
@@ -106,7 +109,8 @@ import javax.jms.*;
                     String topicNow = topicIterate.next();
                     System.out.println("Topic Now = " + topicNow);
                     topic = ((AQjmsSession) tSess).getTopic(user, topicNow);
-                    tSubs = ((AQjmsSession) tSess).createDurableSubscriber(topic, "S1");
+                    tCons = ((AQjmsSession) tSess).createSubscriber(topic);
+
                 } catch (Exception e) {
                     System.out.println("Exception while creation subscription!" + e);
                     e.printStackTrace();
@@ -119,12 +123,16 @@ import javax.jms.*;
 
         }
 
-        @Override
-        public ConsumerRecords<K, V> poll(long timeout) {
-            String key = null;
-            String val = null;
 
-         ConsumerAQRecord<K, V> dummyCon = new ConsumerAQRecord<>();
+        public ConsumerRecords<K, V> poll(long timeout) throws JMSException {
+            //String key = null;
+            //String val = null;
+             long timePoll=100;
+             long timeremaining=timeout;
+             Map<TopicPartition, List<ConsumerRecord<K, V>>> records=null;
+             List<ConsumerRecord<K,V>> reclist=null;
+             TopicPartition partition=null;
+             ConsumerRecords<K,V> finalrecords;
             try {
                 if (!isStarted) {
                     tCon.start();
@@ -132,22 +140,27 @@ import javax.jms.*;
                 }
 
                 do {
-                    msg = (TextMessage) tSubs.receive(timeout);
-                    key = msg.getJMSCorrelationID();
-                    val = msg.getText();
-                    System.out.println("message="+key + "text=" + val);
+                    aqjmsMessages.add((AQjmsBytesMessage)tCons.receive(timePoll));
+                    timeremaining=timeout-timePoll;
+                    //key = msg.getJMSCorrelationID();
+                    //val = msg.getText();
+                    //System.out.println("message="+key + "text=" + val);
                     //dummyCon.retVal();
                     //System.out.println(dummyCon);
-                } while (msg != null);
+                } while (timeremaining!=0);
             } catch (Exception e) {
                 System.out.println("Cannot get messages!" + e);
             }
-
-            return null;
+            for (AQjmsBytesMessage msg:aqjmsMessages){
+                reclist.add(new ConsumerRecord<K, V>(topic.toString(), 0, 0, (K) msg.getJMSCorrelationID(), (V) msg.getBytesData()));
+            }
+            records.put(partition,reclist); //TODO multiple partition
+            finalrecords=new ConsumerRecords<>(records);
+            return finalrecords;
         }
 
 
-        @Override
+
         public void close() {
 
             try {

@@ -64,7 +64,7 @@ public class DescribeGroupsResponse extends AbstractResponse {
     private static final Schema DESCRIBE_GROUPS_RESPONSE_GROUP_METADATA_V0 = new Schema(
             ERROR_CODE,
             GROUP_ID,
-            new Field(GROUP_STATE_KEY_NAME, STRING, "The current state of the group (one of: Dead, Stable, AwaitingSync, " +
+            new Field(GROUP_STATE_KEY_NAME, STRING, "The current state of the group (one of: Dead, Stable, CompletingRebalance, " +
                     "PreparingRebalance, or empty if there is no active group)"),
             new Field(PROTOCOL_TYPE_KEY_NAME, STRING, "The current group protocol type (will be empty if there is no active group)"),
             new Field(PROTOCOL_KEY_NAME, STRING, "The current group protocol (only provided if the group is Stable)"),
@@ -189,12 +189,12 @@ public class DescribeGroupsResponse extends AbstractResponse {
         }
 
         public static GroupMetadata forError(Errors error) {
-            return new GroupMetadata(
+            return new DescribeGroupsResponse.GroupMetadata(
                     error,
                     DescribeGroupsResponse.UNKNOWN_STATE,
                     DescribeGroupsResponse.UNKNOWN_PROTOCOL_TYPE,
                     DescribeGroupsResponse.UNKNOWN_PROTOCOL,
-                    Collections.<GroupMember>emptyList());
+                    Collections.<DescribeGroupsResponse.GroupMember>emptyList());
         }
     }
 
